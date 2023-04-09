@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/SoundtrackLovr.iml" filepath="$PROJECT_DIR$/.idea/SoundtrackLovr.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/khinsider-downloader.iml" filepath="$PROJECT_DIR$/.idea/khinsider-downloader.iml" />
     </modules>
   </component>
 </project>
