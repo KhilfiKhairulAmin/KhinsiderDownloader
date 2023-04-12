@@ -117,11 +117,18 @@ class KhinsiderDownloader:
         return KhinsiderAlbum(album_title, album_duration, album_formats_and_sizes, soundtrack_urls)
 
 
+# TODO: Implement choose format functionality in KhinsiderDownloader
+# TODO: Implement the download function in KhinsiderDownloader
+# TODO: Implement interface for user input and output
+# TODO: Implement error handlers for the interface
+
 khin = KhinsiderDownloader('minecraft')
 print(khin.get_album())
 khin = KhinsiderDownloader('super-mario-galaxy-2-wii-wii-u-gamerip-2010')
 print(khin.get_album())
 khin = KhinsiderDownloader('five-nights-at-freddy-s-2-ost')
+print(khin.get_album())
+khin = KhinsiderDownloader('pac-man-arcade')
 print(khin.get_album())
 
 #
