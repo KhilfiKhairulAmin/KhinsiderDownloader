@@ -150,7 +150,6 @@ class KhinsiderDownloader:
         return KhinsiderAlbum(album_title, album_duration, album_formats_and_sizes, soundtrack_urls)
 
 
-# TODO: Implement choose format functionality in KhinsiderDownloader
 khin = KhinsiderDownloader('minecraft')
 khin_album = khin.get_album()
 print(khin_album)
