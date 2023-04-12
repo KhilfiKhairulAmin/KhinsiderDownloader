@@ -85,7 +85,7 @@ def get_album_info(url: str) -> Tuple[str, str, Dict[str, str], List[str]]:
 
     if 'https://downloads.khinsider.com/game-soundtracks/album/' not in url:
         raise InvalidUrl('Invalid URL: URL must contain https://downloads.khinsider.com/game-soundtracks/album'
-                         '/<album_name>')
+                         '/<album_id>')
 
     # Make a request to the album page URL and parse the HTML with BeautifulSoup
     html = get(url)
@@ -146,15 +146,14 @@ def choose_audio_format(audios: Dict[str, str], prompt: str = 'Choose a format:'
     for i, audio in enumerate(audios.items()):
         print(f'{i} - {audio[0]}')
 
-    length = len(audios)
+    selection = range(0, len(audios))
     while True:
         try:
             input_ = get_input("", default='0')
-            selection = range(0, length)
-            if int(input_) in list(range(0, length)):
+            if int(input_) in list(selection):
                 return input_
             raise Exception
-        except Exception as err:
+        except (ValueError, TypeError):
             print(f"Invalid input: Please enter number {' or '.join(map(lambda t: str(t), selection))} only.")
 
 
