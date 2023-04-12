@@ -3,7 +3,7 @@
 from os.path import isfile
 from os import mkdir
 from pathlib import Path
-from typing import Dict, Tuple, List, Callable
+from typing import Dict, Tuple, List, Callable, Iterable, Sequence
 from urllib.parse import unquote
 import pdb
 
@@ -30,6 +30,36 @@ def get_input(prompt: str, default: str = None) -> str:
         str: The user's input, or the default value if provided and the user entered nothing.
     """
     return input(prompt) or default
+
+
+def choose_format(format_selections: Sequence[str]) -> int:
+
+    selections_range = range(0, len(format_selections))
+
+    # Display prompt
+    print('Choose a format:')
+    for i in selections_range:
+        print(f'{i} - {format_selections[i]}')
+
+    # Get the valid input
+    while True:
+        try:
+            selection = get_input('')
+
+            # Handles when input is empty OR
+            # contains more than 1 character OR
+            # contains other character than number
+            if (not selection) or (len(selection) > 1) or (not selection.isnumeric()):
+                raise ValueError
+
+            selection = int(selection)
+            # Checks if number is in range
+            if selection not in list(selections_range):
+                raise ValueError
+
+            return selection
+        except (ValueError, TypeError):
+            print(f"Invalid input: Please enter number {' or '.join(map(lambda t: str(t), selections_range))} only.")
 
 
 def format_bytes(bytes_list):
@@ -68,6 +98,9 @@ class KhinsiderAlbum:
         f = '\n'.join([f'✓ {format_} ({size})' for (format_, size) in self.formats_and_sizes])
         return '\n'.join([f'ALBUM Title: {self.title}', f'Total Duration: {self.duration}', 'Available format:', f])
 
+    def get_available_formats(self) -> Tuple[str, ...]:
+        return tuple(f for (f, _) in self.formats_and_sizes)
+
 
 class KhinsiderDownloader:
     def __init__(self, album_id):
@@ -95,8 +128,8 @@ class KhinsiderDownloader:
             # it means the content talks about the audio format available.
             # Otherwise, it means the talk about audio format(s) has ended,
             # thus stop looping other elements to enhance performance.
-            if format_ := th_list[i].text.strip():
-                album_formats.append(format_)
+            if f := th_list[i].text.strip():
+                album_formats.append(f)
             else:
                 break
 
@@ -118,18 +151,15 @@ class KhinsiderDownloader:
 
 
 # TODO: Implement choose format functionality in KhinsiderDownloader
+khin = KhinsiderDownloader('minecraft')
+khin_album = khin.get_album()
+print(khin_album)
+format_ = choose_format(khin_album.get_available_formats())
+
+
 # TODO: Implement the download function in KhinsiderDownloader
 # TODO: Implement interface for user input and output
 # TODO: Implement error handlers for the interface
-
-khin = KhinsiderDownloader('minecraft')
-print(khin.get_album())
-khin = KhinsiderDownloader('super-mario-galaxy-2-wii-wii-u-gamerip-2010')
-print(khin.get_album())
-khin = KhinsiderDownloader('five-nights-at-freddy-s-2-ost')
-print(khin.get_album())
-khin = KhinsiderDownloader('pac-man-arcade')
-print(khin.get_album())
 
 #
 # def display_album(title: str, total_duration: str, audios: Dict[str, str]):
@@ -231,31 +261,6 @@ print(khin.get_album())
 #     return album_title, duration, audios, soundtracks_page_url
 #
 #
-# def choose_audio_format(audios: Dict[str, str], prompt: str = 'Choose a format:') -> str:
-#     """
-#     Allows the user to choose an audio format from a given dictionary of audio formats and their corresponding sizes.
-#
-#     Args:
-#         audios (Dict[str, str]): A dictionary containing audio formats and their corresponding sizes.
-#         prompt (str, optional): The prompt message to display to the user. Defaults to "Choose a format:".
-#
-#     Returns:
-#         str: The chosen audio format.
-#     """
-#     print(prompt)
-#
-#     for i, audio in enumerate(audios.items()):
-#         print(f'{i} - {audio[0]}')
-#
-#     selection = range(0, len(audios))
-#     while True:
-#         try:
-#             input_ = get_input("", default='0')
-#             if int(input_) in list(selection):
-#                 return input_
-#             raise Exception
-#         except (ValueError, TypeError):
-#             print(f"Invalid input: Please enter number {' or '.join(map(lambda t: str(t), selection))} only.")
 #
 #
 # def prepare_download_directory(default: str):
