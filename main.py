@@ -1,15 +1,12 @@
 # This script will mass download soundtracks of an album from downloads.khinsider.com
 import os.path
-import sys
 from os import mkdir
 from pathlib import Path
 from urllib.parse import unquote
-from urllib.request import urlopen
 
 import requests
 from bs4 import BeautifulSoup
 from tqdm import tqdm
-import wget
 
 
 def get_input(prompt, default=None):
@@ -36,6 +33,11 @@ def display_album(title: str, total_duration: str, audios: dict):
     print('Available format:')
     for format_, space in audios.items():
         print(f'✓ {format_} ({space})')
+
+
+def mb_to_gb(megabytes):
+    return round(megabytes / 1000, 2)
+
 
 
 def get_album_info(url):
@@ -72,9 +74,9 @@ def get_album_info(url):
         else:
             break
 
-    duration, *spaces = ths[-(len(audio_formats) + 2):]
+    duration, *spaces = ths[-(len(audio_formats) + 2):-1]
     duration = duration.text
-    spaces = list(map(lambda s: s.text, spaces))
+    spaces = list(map(lambda s: f"{mb_to_gb(int((s.text.split(' ')[0]).replace(',', '')))} GB", spaces))
 
     # Create dictionary containing formats and its corresponding size
     audios = dict(zip(audio_formats, spaces))
@@ -162,7 +164,7 @@ def download_soundtracks(soundtracks_page_url, audio_format, dir_out):
         progress_bar.close()
 
         downloaded += 1
-    print(f'Downloads complete. {downloaded} files have been downloaded successfully!')
+    print(f'Downloads complete! {downloaded} files have been downloaded')
 
 
 # URL to the album's page
