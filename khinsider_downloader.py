@@ -32,27 +32,29 @@ def get_input(prompt: str, default: str = None) -> str:
     return input(prompt) or default
 
 
-def format_bytes(max_bytes):
+def format_bytes(bytes_list):
     """
-    Return a lambda function that can format a file size in bytes as a human-readable string.
+    Format a list of file sizes in bytes as human-readable strings based on the largest file size.
 
-    The returned function takes a single argument, the number of bytes, and returns a string
-    with the size formatted in the largest possible units (i.e., B, KB, MB, or GB).
-
-    Parameters:
-        max_bytes (int): The maximum number of bytes that the lambda function will format.
+    Args:
+        bytes_list: A list of integers representing file sizes in bytes.
 
     Returns:
-        function: A lambda function that takes an integer argument and returns a formatted string.
+        A list of formatted sizes in human-readable units (B, KB, MB, GB).
     """
-    if max_bytes < 1024:
-        return lambda b: f"{b} B"
-    elif max_bytes < 1024 ** 2:
-        return lambda b: f"{b / 1024:.1f} KB"
-    elif max_bytes < 1024 ** 3:
-        return lambda b: f"{b / 1024 ** 2:.1f} MB"
-    else:
-        return lambda b: f"{b / 1024 ** 3:.1f} GB"
+    max_bytes = max(bytes_list)
+    unit_dict = {
+        0: 'B',
+        1: 'KB',
+        2: 'MB',
+        3: 'GB'
+    }
+    index = 0
+    while max_bytes >= 1000:
+        index += 1
+        max_bytes /= 1000
+    unit = unit_dict.get(index)
+    return [f'{b / (1024 ** index):.1f} {unit}' for b in bytes_list]
 
 
 class KhinsiderAlbum:
@@ -104,7 +106,8 @@ class KhinsiderDownloader:
 
         # Parse the amount of size from its unit (MB) and convert it to bytes (1 MB = 1,000,000 B)
         # Example: "10 MB" (str) -> 10_000_000 (int)
-        sizes = map(lambda s: int(s.split(' ')[0].replace(',', '')) * 1_000_000, sizes)
+        sizes = list(map(lambda s: int(s.split(' ')[0].replace(',', '')) * 1_000_000, sizes))
+        sizes = format_bytes(sizes)
 
         album_formats_and_sizes = tuple(zip(album_formats, sizes))
 
@@ -115,6 +118,10 @@ class KhinsiderDownloader:
 
 
 khin = KhinsiderDownloader('minecraft')
+print(khin.get_album())
+khin = KhinsiderDownloader('super-mario-galaxy-2-wii-wii-u-gamerip-2010')
+print(khin.get_album())
+khin = KhinsiderDownloader('five-nights-at-freddy-s-2-ost')
 print(khin.get_album())
 
 #
