@@ -3,10 +3,8 @@
 from os.path import isfile
 from os import mkdir
 from pathlib import Path
-from typing import Dict, Tuple, List, Callable, Iterable, Sequence
+from typing import Tuple, Sequence
 from urllib.parse import unquote
-from traceback import print_exc
-import pdb
 
 # External dependencies
 from requests import get
@@ -214,7 +212,7 @@ class KhinsiderDownloader:
         total_size_in_bytes = int(response.headers.get('content-length', 0))
         block_size = 500_000  # 0.5 MB
 
-        progress_bar = tqdm(total=total_size_in_bytes, unit='it', unit_scale=True, colour='green', bar_format=)
+        progress_bar = tqdm(total=total_size_in_bytes, unit='it', unit_scale=True, colour='green')
 
         # Open a file to write the downloaded data to
         with open(filepath, 'wb') as file:
