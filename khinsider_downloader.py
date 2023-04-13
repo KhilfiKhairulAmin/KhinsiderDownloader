@@ -142,7 +142,7 @@ class KhinsiderAlbum:
         album_title = album_page.find('h2').text
 
         if album_title == 'Ooops!':
-            raise ConnectionRefusedError(f"Invalid ID: Album ID doesn't exist")
+            raise ConnectionRefusedError(f"Invalid ID: Album ID '{album_id}' doesn't exist")
 
         # Get the soundtracks table
         soundtracks_table = album_page.find_all('table')[1]
@@ -352,12 +352,23 @@ class KhinsiderAlbum:
 
 # Interface
 if __name__ == '__main__':
+    welcome = '''
+╔═══╗ ♪  Welcome to,
+║███║ ♫  KHINSIDER DOWNLOADER.
+║(●)║ ♫  Download your favorite video game soundtracks with ease!
+╚═══╝♪♪  ▁▇▅▂▃▂▇▅▇▃▄▁▇█▅█▃▄▁▇█▅▄▁▅▃▄▁▄▃▄█▅▇▃▄▁▄▇█▂▃▁▅▄▅█▁▅█▃▄▃▇▂▁
+    '''
+    print(welcome)
+    text_prompt = "▶ Please enter an album id OR a link to the album's page (from downloads.khinsider.com:\n"
     while True:
         # Prompt the user to enter the URL or ID of the album
-        url_or_id = str(get_input("Link to the album's page or album ID:\n"))
+        url_or_id = str(get_input(text_prompt, default=''))
         id_ = KhinsiderAlbum.parse_id(url_or_id)
 
         try:
+            if not id_:
+                raise ConnectionRefusedError(f"Invalid ID: Album ID can't be empty")
+
             # Get soundtrack information
             khin_album = KhinsiderAlbum(id_)
             print('')
@@ -382,12 +393,12 @@ if __name__ == '__main__':
 
             while True:
                 # Ask the user if they want to continue
-                continue_ = get_input('Do you want to continue? [Y/n]\n', default='y').lower()
+                continue_ = get_input('▶ Do you want to continue? [Y/n]\n', default='y')
 
-                match continue_:
-                    case 'y' | 'yes' | 'ok':
+                match continue_.lower():
+                    case 'y' | 'yes' | 'ok' | 'continue':
                         break
-                    case 'n' | 'no' | 'nope':
+                    case 'n' | 'no' | 'nope' | 'exit':
                         # Exit the program if the user chooses not to continue
                         exit(0)
                     case _:
