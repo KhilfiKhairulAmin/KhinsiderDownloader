@@ -32,7 +32,16 @@ def get_input(prompt: str, default: str = None) -> str:
 
 
 def choose_format(format_selections: Sequence[str]) -> int:
+    """
+    Prompts the user to choose an audio format from a sequence of selections and returns the index of the selected
+    format.
 
+    Args:
+        format_selections (Sequence[str]): A sequence of strings representing the available format options.
+
+    Returns:
+        int: The index of the selected format.
+    """
     selections_range = range(0, len(format_selections))
 
     # Display prompt
@@ -64,12 +73,13 @@ def choose_format(format_selections: Sequence[str]) -> int:
 
 def choose_download_dir(dir_default: str):
     """
-    Creates a new directory at the given path if it does not already exist.
+    Prompts the user to specify a download location and creates the directory if it does not exist.
 
     Args:
-        dir_default: A string representing the default path to the directory to create.
+        dir_default (str): The default download location to use if the user enters nothing.
+
     Returns:
-        None
+        str: The user's input as a string, or the default value if provided when the user entered nothing.
     """
     while True:
         out = str(get_input(f'Download location (Press Enter to use default: {dir_default} ):\n', default=dir_default))
@@ -110,6 +120,23 @@ def format_bytes(bytes_list):
 
 
 class KhinsiderAlbum:
+    """
+    Represents an album available on downloads.khinsider.com, with information on the album's title, duration, available
+    formats and sizes, and soundtrack URLs.
+
+    Attributes:
+        title (str): The title of the album.
+        duration (str): The total duration of the album.
+        formats_and_sizes (List[Tuple[str, str]]): A list of tuples representing available formats and sizes
+            for the album, with each tuple containing a format string and a size string.
+        soundtrack_urls (Dict[str, str]): A dictionary of soundtrack URLs for the album, with keys representing
+            the format of the soundtrack and values representing the URL.
+
+    Methods:
+        __str__(): Returns a string representation of the album, including its title, duration, and available
+            formats and sizes.
+        get_available_formats(): Returns a tuple of strings representing the available formats for the album.
+    """
     def __init__(self, title, duration, formats_and_sizes, soundtrack_urls):
         self.title = title
         self.duration = duration
