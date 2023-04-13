@@ -8,6 +8,7 @@ from urllib.parse import unquote
 
 # External dependencies
 from requests import get
+from requests.exceptions import RequestException
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
@@ -121,6 +122,15 @@ def format_bytes(bytes_list):
 
 class KhinsiderAlbum:
     def __init__(self, album_id):
+        """
+        Initializes a new instance of the `KhinsiderAlbum` class with the given album ID.
+
+        Args:
+            album_id (str): The ID of the album to be retrieved.
+
+        Raises:
+            ConnectionRefusedError: If the given album ID does not exist.
+        """
         self.album_url = f'{BASE_ALBUM_URL}/{album_id}'
 
         # Make a request to the album page URL and parse the HTML with BeautifulSoup.
@@ -174,20 +184,63 @@ class KhinsiderAlbum:
         self.soundtrack_urls = soundtrack_urls
 
     def __str__(self):
+        """
+        Return a formatted string representation of the KhinsiderAlbum object.
+
+        Returns:
+            str: A string composed of the album's title, duration, and available formats with their sizes.
+        """
         f = '\n'.join([f'✓ {f} ({s})' for (f, s) in self.formats_and_sizes])
         return '\n'.join([f'ALBUM Title: {self.title}', f'Total Duration: {self.duration}', 'Available format:', f])
 
     def get_available_formats(self) -> Tuple[str, ...]:
+        """
+        Returns a tuple of available audio formats for the album.
+
+        Returns:
+            Tuple[str, ...]: A tuple of available audio formats.
+        """
         return tuple(f for (f, _) in self.formats_and_sizes)
 
     @staticmethod
     def parse_id(url_to_album: str) -> str:
+        """
+        Parse the album ID from a given album URL. If album ID is provided instead of URL, the album ID is returned
+        without parsing.
+
+        Args:
+            url_to_album (str): The URL to the album.
+
+        Returns:
+            str: The ID of the album.
+
+        Examples:
+            >>> url = 'https://downloads.khinsider.com/game-soundtracks/album/kingdom-hearts-original-soundtrack'
+            >>> KhinsiderAlbum.parse_id(url)
+            'kingdom-hearts-original-soundtrack'
+        """
         if BASE_ALBUM_URL in url_to_album:
             return url_to_album.rsplit('/', 1)[1]
         return url_to_album
 
     @staticmethod
     def _scrape_download_url(soundtrack_url: str, audio_select: int = 0) -> str:
+        """
+        Scrape the download URL of an audio file from a soundtrack webpage.
+
+        Parameters:
+            soundtrack_url (str): The URL of the soundtrack webpage.
+            audio_select (int, optional): The index of the audio file to download if there are multiple files available.
+                Defaults to 0 (i.e., the first audio file in the list).
+
+        Returns:
+            str: The URL of the audio file to download.
+
+        Raises:
+            requests.exceptions.RequestException: If there is an error with the HTTP request.
+            ValueError: If the audio_format_selection parameter is out of range.
+
+        """
         # Open source page
         html = get(soundtrack_url)
         soundtrack_page = BeautifulSoup(html.text, 'html.parser')
@@ -204,6 +257,20 @@ class KhinsiderAlbum:
 
     @staticmethod
     def _parse_filename(download_url: str) -> str:
+        """
+        Parse the filename from a given download URL.
+
+        Args:
+            download_url (str): The URL of the file to parse the filename from.
+
+        Returns:
+            str: The filename, extracted from the URL.
+
+        Example:
+            >>> url = 'https://example.com/soundtrack/%231 Track 1.mp3'
+            >>> KhinsiderAlbum._parse_filename(url)
+            '#1 Track 1.mp3'
+        """
         return download_url.rsplit('/', 1)[1].replace('%23', '#')
 
     @staticmethod
@@ -226,13 +293,34 @@ class KhinsiderAlbum:
 
     @staticmethod
     def _create_output_directory(directory):
+        """
+        Creates a new directory with the specified path.
+
+        Args:
+            directory (str): The path of the directory to create.
+
+        Returns:
+            None.
+        """
         try:
             mkdir(directory)
+            print(f'Directory {directory} created...')
         except FileExistsError:
             pass
 
     def download(self, out_dir: str, audio_format_selection: int) -> None:
+        """
+        Downloads the soundtrack files for the album to a specified directory.
 
+        :param out_dir: The path to the directory where the soundtrack files will be saved.
+        :type out_dir: str
+
+        :param audio_format_selection: An integer representing the index of the desired audio format and quality
+            from the available formats and sizes list for each soundtrack file. Default is 0 (the first format).
+        :type audio_format_selection: int
+
+        :return: None
+        """
         self._create_output_directory(out_dir)
         download_count = 0
         skip_count = 0
@@ -255,13 +343,17 @@ class KhinsiderAlbum:
         print(f'Downloads finished! {download_count} files have been downloaded, {skip_count} files has been skipped.')
 
     def get_download_length(self):
+        """
+        Returns the number of soundtracks to be downloaded
+        :return:
+        """
         return len(self.soundtrack_urls)
 
 
 # Interface
 if __name__ == '__main__':
     while True:
-        # URL to the album's page
+        # Prompt the user to enter the URL or ID of the album
         url_or_id = str(get_input("Link to the album's page or album ID:\n"))
         id_ = KhinsiderAlbum.parse_id(url_or_id)
 
@@ -281,21 +373,27 @@ if __name__ == '__main__':
             # Preset the output directory of audio file
             dir_out = choose_download_dir(f'{str(Path.home())}/Music/{khin_album.title}')
 
+            # Inform the user that the download is being prepared
             print('\nPreparing download...')
+
+            # Download the soundtrack
             khin_album.download(dir_out, f_selected)
             print('')
 
             while True:
+                # Ask the user if they want to continue
                 continue_ = get_input('Do you want to continue? [Y/n]\n', default='y').lower()
 
                 match continue_:
                     case 'y' | 'yes' | 'ok':
                         break
                     case 'n' | 'no' | 'nope':
+                        # Exit the program if the user chooses not to continue
                         exit(0)
                     case _:
                         continue
-        except ConnectionRefusedError as an_err:
+        except (ConnectionRefusedError, RequestException) as an_err:
+            # Handle exceptions related to network requests
             print(an_err)
         finally:
             print('')
