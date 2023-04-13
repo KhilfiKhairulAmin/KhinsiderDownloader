@@ -254,7 +254,6 @@ f_selection = choose_format(album.get_available_formats())
 print(f'{khin.get_download_length()} files will be downloaded...')
 khin.download('/home/infienite/TestMusic', f_selection)
 
-# TODO: Implement prepare directory function
 # TODO: Implement interface for user input and output
 # TODO: Implement error handlers for the interface
 
