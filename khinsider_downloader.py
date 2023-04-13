@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 # URL to album
 BASE_URL = 'https://downloads.khinsider.com'
-URL_TO_ALBUM = f'{BASE_URL}/game-soundtracks/album'
+BASE_ALBUM_URL = f'{BASE_URL}/game-soundtracks/album'
 
 
 def get_input(prompt: str, default: str = None) -> str:
@@ -63,6 +63,28 @@ def choose_format(format_selections: Sequence[str]) -> int:
             print(err)
 
 
+def choose_download_dir(dir_default: str):
+    """
+    Creates a new directory at the given path if it does not already exist.
+
+    Args:
+        dir_default: A string representing the default path to the directory to create.
+    Returns:
+        None
+    """
+    while True:
+        out = str(get_input(f'Download location (Press Enter to use default: {dir_default} ):\n', default=dir_default))
+
+        try:
+            mkdir(out)
+            return out
+        except FileExistsError:
+            return out
+        except PermissionError as err:
+            print(err)
+            print('Invalid location: Please provide a valid download location or use default.\n')
+
+
 def format_bytes(bytes_list):
     """
     Format a list of file sizes in bytes as human-readable strings based on the largest file size.
@@ -105,7 +127,7 @@ class KhinsiderAlbum:
 
 class KhinsiderDownloader:
     def __init__(self, album_id):
-        self.album_url = f'{URL_TO_ALBUM}/{album_id}'
+        self.album_url = f'{BASE_ALBUM_URL}/{album_id}'
 
         # Make a request to the album page URL and parse the HTML with BeautifulSoup.
         html = get(self.album_url)
@@ -153,25 +175,11 @@ class KhinsiderDownloader:
     def get_album(self):
         return self.album
 
-    def prepare_download_directory(default: str):
-        """
-        Creates a new directory at the given path if it does not already exist.
-
-        Args:
-            default: A string representing the default path to the directory to create.
-        Returns:
-            None
-        """
-        while True:
-            out = str(get_input(f'Download location (Press Enter to use default: {default} ):\n', default=default))
-
-            try:
-                mkdir(out)
-                return out
-            except FileExistsError:
-                return out
-            except Exception:
-                print('Invalid location: Please provide a valid download location or use default.\n')
+    @staticmethod
+    def parse_id(url_to_album: str) -> str:
+        if BASE_ALBUM_URL in url_to_album:
+            return url_to_album.rsplit('/', 1)[1]
+        return url_to_album
 
     @staticmethod
     def _scrape_download_url(soundtrack_url: str, audio_select: int = 0) -> str:
@@ -212,22 +220,21 @@ class KhinsiderDownloader:
         progress_bar.close()
 
     @staticmethod
-    def _create_output_directory(dir):
+    def _create_output_directory(directory):
         try:
-            mkdir(dir)
-            print(f'Directory {dir} created...')
-        except FileExistsError as err:
-            print(f'Directory {dir} already exist...')
+            mkdir(directory)
+        except FileExistsError:
+            pass
 
-    def download(self, dir_out: str, audio_format_selection: int) -> None:
+    def download(self, out_dir: str, audio_format_selection: int) -> None:
 
-        self._create_output_directory(dir_out)
+        self._create_output_directory(out_dir)
         download_count = 0
         skip_count = 0
         for url in self.album.soundtrack_urls:
             download_url = self._scrape_download_url(url, audio_format_selection)
             filename = self._parse_filename(download_url)
-            filepath = f'{dir_out}/{filename}'
+            filepath = f'{out_dir}/{filename}'
 
             # Checks if file already exists
             if isfile(filepath):
@@ -246,164 +253,49 @@ class KhinsiderDownloader:
         return len(self.album.soundtrack_urls)
 
 
-khin = KhinsiderDownloader('minecraft')
-album = khin.get_album()
-print(album)
-f_selection = choose_format(album.get_available_formats())
+# Interface
+if __name__ == '__main__':
+    while True:
+        # URL to the album's page
+        url_or_id = str(get_input("Link to the album's page (from downloads.khinsider.com) or album id:\n"))
+        id_ = KhinsiderDownloader.parse_id(url_or_id)
 
-print(f'{khin.get_download_length()} files will be downloaded...')
-khin.download('/home/infienite/TestMusic', f_selection)
+        try:
+            # Get soundtrack information
+            khin = KhinsiderDownloader(id_)
+            print('')
 
-# TODO: Implement interface for user input and output
-# TODO: Implement error handlers for the interface
+            # Display the information
+            album = khin.get_album()
+            print(album)
+            print('')
 
-#
-# def display_album(title: str, total_duration: str, audios: Dict[str, str]):
-#     """
-#     Displays information about an album, including its title, total duration,
-#     and available audio formats and their corresponding file sizes.
-#
-#     Args:
-#         title (str): The title of the album.
-#         total_duration (str): The total duration of the album.
-#         audios (dict): A dictionary containing the available audio formats and their corresponding file sizes.
-#
-#     Returns:
-#         None
-#     """
-#     print('ALBUM')
-#     print(f'Title: {title}')
-#     print(f'Total Duration: {total_duration}')
-#     print('Available format:')
-#     for format_, space in audios.items():
-#         print(f'✓ {format_} ({space})')
-#
-#
-# def mb_to_gb(megabytes: int | float):
-#     """
-#     Convert a value in megabytes to gigabytes.
-#
-#     Args:
-#         megabytes (int or float): A value in megabytes to convert to gigabytes.
-#
-#     Returns:
-#         float: The equivalent value in gigabytes, rounded to two decimal places.
-#
-#     Examples:
-#         >>> mb_to_gb(5000)
-#         5.0
-#         >>> mb_to_gb(12345.67)
-#         12.35
-#     """
-#     return round(megabytes / 1000, 2)
-#
-#
-# def get_album_info(url: str) -> Tuple[str, str, Dict[str, str], List[str]]:
-#     """
-#     Retrieves information about an album from downloads.khinsider.com
-#
-#     Args:
-#         url: A string representing the URL of the album page.
-#
-#     Returns:
-#         A tuple containing the album title, total duration, dictionary of available audio formats and their sizes,
-#         and a list of URLs to the soundtrack source pages.
-#     """
-#
-#     if 'https://downloads.khinsider.com/game-soundtracks/album/' not in url:
-#         raise InvalidUrl('Invalid URL: URL must contain https://downloads.khinsider.com/game-soundtracks/album'
-#                          '/<album_id>')
-#
-#     # Make a request to the album page URL and parse the HTML with BeautifulSoup
-#     html = get(url)
-#     album_page = BeautifulSoup(html.text, 'html.parser')
-#
-#     # Get the album title.
-#     album_title = album_page.find("h2").text
-#
-#     # Get the soundtracks table.
-#     tables = album_page.find_all("table")
-#     soundtracks_table = tables[1]
-#
-#     # Extract information about the soundtracks.
-#     ths = soundtracks_table.find_all("th")
-#     mp3_index = next(i for i, th in enumerate(ths) if th.text == "MP3")
-#     audio_formats = []
-#     for i in range(mp3_index, len(ths)):
-#         if audio_format := ths[i].text.strip():  # If str is not empty (truthy), it means an audio format is listed here
-#             audio_formats.append(audio_format)
-#         else:
-#             break
-#
-#     duration, *spaces = ths[-(len(audio_formats) + 2):-1]
-#     duration = duration.text
-#
-#     spaces = list(map(lambda s: int((s.text.split(' ')[0]).replace(',', '')), spaces))
-#
-#     more_than_1000 = [s for s in spaces if s >= 1000]
-#
-#     if more_than_1000:
-#         spaces = list(map(lambda s: f'{mb_to_gb(s)} GB', spaces))
-#     else:
-#         spaces = list(map(lambda s: f'{s} MB', spaces))
-#
-#     # Create dictionary containing formats and its corresponding size
-#     audios = dict(zip(audio_formats, spaces))
-#
-#     # Get all urls to soundtrack source page
-#     tds = soundtracks_table.find_all_next('td', class_='clickable-row')[::4]  # [::4] to avoid repetition of same URL
-#     soundtracks_page_url = list(map(lambda td: f"https://downloads.khinsider.com{td.next_element['href']}", tds))
-#
-#     return album_title, duration, audios, soundtracks_page_url
-#
-#
-# while True:
-#     # URL to the album's page
-#     album_url = str(get_input("Link to the album's page (from downloads.khinsider.com):\n"))
-#
-#     try:
-#         # Get soundtrack information
-#         album_title, duration, audios, soundtracks_page_url = get_album_info(album_url)
-#
-#         print('')
-#
-#         # Display the information
-#         display_album(album_title, duration, audios)
-#
-#         print('')
-#
-#         # Choose an audio format if there are more than one format available
-#         audio_format = int(choose_audio_format(audios, '\nChoose a format:') if len(audios) > 1 else 0)
-#
-#         print('')
-#
-#         # Preset the output directory of audio file
-#         dir_out = prepare_download_directory(f'{str(Path.home())}/Music/{album_title}')
-#
-#         print('\nPreparing download...')
-#         download_soundtracks(soundtracks_page_url, audio_format, dir_out)
-#         print('')
-#
-#         while True:
-#             continue_ = get_input('Do you want to continue? [Y/n]\n', default='y').lower()
-#
-#             match continue_:
-#                 case 'y' | 'yes' | 'ok':
-#                     break
-#                 case 'n' | 'no' | 'nope':
-#                     exit(0)
-#                 case _:
-#                     continue
-#
-#     except InvalidUrl as err:
-#         print(err)
-#         continue
-#
-#     except Exception as err:
-#         print('\nSomething went wrong!')
-#         print(f'URL: {album_url}')
-#         print(f'Error: {err}')
-#         print('\nKindly bring this error to the attention of the seller by reporting it to them. Thank you.')
-#
-#     finally:
-#         print('')
+            # Choose an audio format if there are more than one format available
+            f_selected = choose_format(album.get_available_formats())
+            print('')
+
+            # Preset the output directory of audio file
+            dir_out = choose_download_dir(f'{str(Path.home())}/Music/{album.title}')
+
+            print('\nPreparing download...')
+            khin.download(dir_out, f_selected)
+            print('')
+
+            while True:
+                continue_ = get_input('Do you want to continue? [Y/n]\n', default='y').lower()
+
+                match continue_:
+                    case 'y' | 'yes' | 'ok':
+                        break
+                    case 'n' | 'no' | 'nope':
+                        exit(0)
+                    case _:
+                        continue
+        except Exception as an_err:
+            print('\nSomething went wrong!')
+            print(f'ID: {id_}')
+            print(f'Error: {an_err}')
+            print('\nKindly bring this error to the attention of the seller by reporting it to them. Thank you.')
+
+        finally:
+            print('')
