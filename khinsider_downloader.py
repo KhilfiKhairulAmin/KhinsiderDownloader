@@ -41,6 +41,7 @@ def choose_format(format_selections: Sequence[str]) -> int:
     for i in selections_range:
         print(f'{i} - {format_selections[i]}')
 
+    selections_display = ' or '.join(map(lambda t: str(t), selections_range))
     # Get the valid input
     while True:
         try:
@@ -50,16 +51,16 @@ def choose_format(format_selections: Sequence[str]) -> int:
             # contains more than 1 character OR
             # contains other character than number
             if (not selection) or (len(selection) > 1) or (not selection.isnumeric()):
-                raise ValueError
+                raise ValueError(f"Invalid input: Please enter number {selections_display} only.")
 
             selection = int(selection)
             # Checks if number is in range
             if selection not in list(selections_range):
-                raise ValueError
+                raise ValueError(f"Invalid range: Only {selections_display} available.")
 
             return selection
-        except (ValueError, TypeError):
-            print(f"Invalid input: Please enter number {' or '.join(map(lambda t: str(t), selections_range))} only.")
+        except (ValueError, TypeError) as err:
+            print(err)
 
 
 def format_bytes(bytes_list):
@@ -95,7 +96,7 @@ class KhinsiderAlbum:
         self.soundtrack_urls = soundtrack_urls
 
     def __str__(self):
-        f = '\n'.join([f'✓ {format_} ({size})' for (format_, size) in self.formats_and_sizes])
+        f = '\n'.join([f'✓ {f} ({s})' for (f, s) in self.formats_and_sizes])
         return '\n'.join([f'ALBUM Title: {self.title}', f'Total Duration: {self.duration}', 'Available format:', f])
 
     def get_available_formats(self) -> Tuple[str, ...]:
@@ -106,16 +107,15 @@ class KhinsiderDownloader:
     def __init__(self, album_id):
         self.album_url = f'{URL_TO_ALBUM}/{album_id}'
 
-        # Make a request to the album page URL and parse the HTML with BeautifulSoup
+        # Make a request to the album page URL and parse the HTML with BeautifulSoup.
         html = get(self.album_url)
-        self.album_page = BeautifulSoup(html.text, 'html.parser')
+        album_page = BeautifulSoup(html.text, 'html.parser')
 
-    def get_album(self):
         # Get the album title.
-        album_title = self.album_page.find("h2").text
+        album_title = album_page.find("h2").text
 
         # Get the soundtracks table
-        soundtracks_table = self.album_page.find_all('table')[1]
+        soundtracks_table = album_page.find_all('table')[1]
         th_list = soundtracks_table.find_all('th')
 
         # Finds the index of the MP3 format in the th element
@@ -147,16 +147,105 @@ class KhinsiderDownloader:
         # Get the URLs to each soundtrack's source page
         urls = [td for i, td in enumerate(soundtracks_table.find_all_next('td', class_='clickable-row')) if i % 4 == 0]
         soundtrack_urls = list(map(lambda td: f"{BASE_URL}{td.next_element['href']}", urls))
-        return KhinsiderAlbum(album_title, album_duration, album_formats_and_sizes, soundtrack_urls)
+
+        self.album = KhinsiderAlbum(album_title, album_duration, album_formats_and_sizes, soundtrack_urls)
+
+    def get_album(self):
+        return self.album
+
+    def prepare_download_directory(default: str):
+        """
+        Creates a new directory at the given path if it does not already exist.
+
+        Args:
+            default: A string representing the default path to the directory to create.
+        Returns:
+            None
+        """
+        while True:
+            out = str(get_input(f'Download location (Press Enter to use default: {default} ):\n', default=default))
+
+            try:
+                mkdir(out)
+                return out
+            except FileExistsError:
+                return out
+            except Exception:
+                print('Invalid location: Please provide a valid download location or use default.\n')
+
+    @staticmethod
+    def _scrape_download_url(soundtrack_url: str, audio_select: int = 0) -> str:
+        # Open source page
+        html = get(soundtrack_url)
+        soundtrack_page = BeautifulSoup(html.text, 'html.parser')
+
+        # Scrape the link to download resource
+        download_url = soundtrack_page.find_all(class_='songDownloadLink')[audio_select].parent['href']
+
+        # The website's url already formatted some characters to their corresponding code (%XX)
+        # Unquote will reformat it from code back to its original character
+        # Refer https://docs.python.org/3.10/library/urllib.parse.html#urllib.parse.unquote
+        # The '#' special character is used in certain URLs (in the filename), replace for URL purpose
+        download_url = unquote(download_url).replace('#', '%23')
+        return download_url
+
+    @staticmethod
+    def _parse_filename(download_url: str) -> str:
+        return download_url.rsplit('/', 1)[1].replace('%23', '#')
+
+    @staticmethod
+    def _download_soundtrack(download_url, filepath):
+        # Make a GET request to the URL, but don't download the entire response at once
+        response = get(download_url, stream=True)
+
+        total_size_in_bytes = int(response.headers.get('content-length', 0))
+        block_size = 1048576  # 1MB
+
+        progress_bar = tqdm(total=total_size_in_bytes, unit='iB', unit_scale=True)
+
+        # Open a file to write the downloaded data to
+        with open(filepath, 'wb') as file:
+            for data in response.iter_content(block_size):
+                progress_bar.update(len(data))
+                file.write(data)
+
+        progress_bar.close()
+
+    def download(self, dir_out: str, audio_format_selection: int) -> None:
+        download_count = 0
+        skip_count = 0
+        for url in self.album.soundtrack_urls:
+            download_url = self._scrape_download_url(url, audio_format_selection)
+            filename = self._parse_filename(download_url)
+            filepath = f'{dir_out}/{filename}'
+
+            # Checks if file already exists
+            if isfile(filepath):
+                print(f'Skipping {filename}, it already exists...')
+                skip_count += 1
+                continue
+
+            print(f'Downloading {filename}...')
+
+            self._download_soundtrack(download_url, filepath)
+
+            download_count += 1
+        print(f'Downloads finished! {download_count} files have been downloaded, {skip_count} files has been skipped.')
+
+    def get_download_length(self):
+        return len(self.album.soundtrack_urls)
 
 
 khin = KhinsiderDownloader('minecraft')
-khin_album = khin.get_album()
-print(khin_album)
-format_ = choose_format(khin_album.get_available_formats())
-
+album = khin.get_album()
+print(album)
+f_selection = choose_format(album.get_available_formats())
 
 # TODO: Implement the download function in KhinsiderDownloader
+print(f'{khin.get_download_length()} files will be downloaded...')
+khin.download('/home/infienite/TestMusic', f_selection)
+
+# TODO: Implement prepare directory function
 # TODO: Implement interface for user input and output
 # TODO: Implement error handlers for the interface
 
@@ -258,85 +347,6 @@ format_ = choose_format(khin_album.get_available_formats())
 #     soundtracks_page_url = list(map(lambda td: f"https://downloads.khinsider.com{td.next_element['href']}", tds))
 #
 #     return album_title, duration, audios, soundtracks_page_url
-#
-#
-#
-#
-# def prepare_download_directory(default: str):
-#     """
-#     Creates a new directory at the given path if it does not already exist.
-#
-#     Args:
-#         default: A string representing the default path to the directory to create.
-#     Returns:
-#         None
-#     """
-#     while True:
-#         out = str(get_input(f'Download location (Press Enter to use default: {default} ):\n', default=default))
-#
-#         try:
-#             mkdir(out)
-#             return out
-#         except FileExistsError:
-#             return out
-#         except Exception:
-#             print('Invalid location: Please provide a valid download location or use default.\n')
-#
-#
-# def download_soundtracks(soundtracks_page_url: List[str], audio_format: int, dir_out: str) -> None:
-#     """Download the soundtracks listed in the given URLs in the specified audio format.
-#
-#     Args:
-#         soundtracks_page_url (List[str]): URLs of the pages where the soundtracks are listed.
-#         audio_format (int): Index of the audio format to download from the list of available formats for each soundtrack.
-#         dir_out (str): Path to the directory where the downloaded files will be saved.
-#
-#     Returns:
-#         None. The function downloads the files and displays progress information on the console.
-#     """
-#     print(f'{len(soundtracks_page_url)} files will be downloaded...')
-#     download_count = 0
-#     for url in soundtracks_page_url:
-#         # Open source page
-#         soundtrack_page = BeautifulSoup(get(url).text, 'html.parser')
-#
-#         # Scrape the link to download resource
-#         source_url = soundtrack_page.find_all(class_='songDownloadLink')[audio_format].parent['href']
-#
-#         # The website's url already formatted some characters to their corresponding code (%XX)
-#         # Unquote will reformat it from code back to its original character
-#         # Refer https://docs.python.org/3.10/library/urllib.parse.html#urllib.parse.unquote
-#         # The '#' special character is used in certain URLs (in the filename), replace for URL purpose
-#         source_url = unquote(source_url).replace('#', '%23')
-#
-#         filename = source_url.rsplit('/', 1)[1].replace('%23', '#')
-#         filepath = f'{dir_out}/{filename}'
-#
-#         # Checks if file already exists
-#         if isfile(filepath):
-#             print(f'Skipping {filename}, it already exists...')
-#             continue
-#
-#         print(f'Downloading {filename}...')
-#
-#         # Make a GET request to the URL, but don't download the entire response at once
-#         response = get(source_url, stream=True)
-#
-#         total_size_in_bytes = int(response.headers.get('content-length', 0))
-#         block_size = 1048576  # 1MB
-#
-#         progress_bar = tqdm(total=total_size_in_bytes, unit='iB', unit_scale=True)
-#
-#         # Open a file to write the downloaded data to
-#         with open(filepath, 'wb') as file:
-#             for data in response.iter_content(block_size):
-#                 progress_bar.update(len(data))
-#                 file.write(data)
-#
-#         progress_bar.close()
-#
-#         download_count += 1
-#     print(f'Downloads finished! {download_count} files have been downloaded')
 #
 #
 # while True:
