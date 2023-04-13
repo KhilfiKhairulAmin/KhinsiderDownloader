@@ -5,6 +5,7 @@ from os import mkdir
 from pathlib import Path
 from typing import Dict, Tuple, List, Callable, Iterable, Sequence
 from urllib.parse import unquote
+from traceback import print_exc
 import pdb
 
 # External dependencies
@@ -131,17 +132,21 @@ class KhinsiderDownloader:
 
         # Make a request to the album page URL and parse the HTML with BeautifulSoup.
         html = get(self.album_url)
+
         album_page = BeautifulSoup(html.text, 'html.parser')
 
         # Get the album title.
-        album_title = album_page.find("h2").text
+        album_title = album_page.find('h2').text
+
+        if album_title == 'Ooops!':
+            raise ConnectionRefusedError(f"Invalid ID: Album ID doesn't exist")
 
         # Get the soundtracks table
         soundtracks_table = album_page.find_all('table')[1]
         th_list = soundtracks_table.find_all('th')
 
         # Finds the index of the MP3 format in the th element
-        mp3_index = next(i for i, th in enumerate(th_list) if th.text == "MP3")
+        mp3_index = next(i for i, th in enumerate(th_list) if th.text == 'MP3')
         album_formats = []
 
         # Finds all available audio format starting from MP3...
@@ -207,9 +212,9 @@ class KhinsiderDownloader:
         response = get(download_url, stream=True)
 
         total_size_in_bytes = int(response.headers.get('content-length', 0))
-        block_size = 1048576  # 1MB
+        block_size = 500_000  # 0.5 MB
 
-        progress_bar = tqdm(total=total_size_in_bytes, unit='iB', unit_scale=True)
+        progress_bar = tqdm(total=total_size_in_bytes, unit='it', unit_scale=True, colour='green', bar_format=)
 
         # Open a file to write the downloaded data to
         with open(filepath, 'wb') as file:
@@ -257,7 +262,7 @@ class KhinsiderDownloader:
 if __name__ == '__main__':
     while True:
         # URL to the album's page
-        url_or_id = str(get_input("Link to the album's page (from downloads.khinsider.com) or album id:\n"))
+        url_or_id = str(get_input("Link to the album's page or album ID:\n"))
         id_ = KhinsiderDownloader.parse_id(url_or_id)
 
         try:
@@ -291,11 +296,7 @@ if __name__ == '__main__':
                         exit(0)
                     case _:
                         continue
-        except Exception as an_err:
-            print('\nSomething went wrong!')
-            print(f'ID: {id_}')
-            print(f'Error: {an_err}')
-            print('\nKindly bring this error to the attention of the seller by reporting it to them. Thank you.')
-
+        except ConnectionRefusedError as an_err:
+            print(an_err)
         finally:
             print('')
