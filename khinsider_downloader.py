@@ -211,7 +211,17 @@ class KhinsiderDownloader:
 
         progress_bar.close()
 
+    @staticmethod
+    def _create_output_directory(dir):
+        try:
+            mkdir(dir)
+            print(f'Directory {dir} created...')
+        except FileExistsError as err:
+            print(f'Directory {dir} already exist...')
+
     def download(self, dir_out: str, audio_format_selection: int) -> None:
+
+        self._create_output_directory(dir_out)
         download_count = 0
         skip_count = 0
         for url in self.album.soundtrack_urls:
@@ -241,7 +251,6 @@ album = khin.get_album()
 print(album)
 f_selection = choose_format(album.get_available_formats())
 
-# TODO: Implement the download function in KhinsiderDownloader
 print(f'{khin.get_download_length()} files will be downloaded...')
 khin.download('/home/infienite/TestMusic', f_selection)
 
