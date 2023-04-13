@@ -120,38 +120,6 @@ def format_bytes(bytes_list):
 
 
 class KhinsiderAlbum:
-    """
-    Represents an album available on downloads.khinsider.com, with information on the album's title, duration, available
-    formats and sizes, and soundtrack URLs.
-
-    Attributes:
-        title (str): The title of the album.
-        duration (str): The total duration of the album.
-        formats_and_sizes (List[Tuple[str, str]]): A list of tuples representing available formats and sizes
-            for the album, with each tuple containing a format string and a size string.
-        soundtrack_urls (Dict[str, str]): A dictionary of soundtrack URLs for the album, with keys representing
-            the format of the soundtrack and values representing the URL.
-
-    Methods:
-        __str__(): Returns a string representation of the album, including its title, duration, and available
-            formats and sizes.
-        get_available_formats(): Returns a tuple of strings representing the available formats for the album.
-    """
-    def __init__(self, title, duration, formats_and_sizes, soundtrack_urls):
-        self.title = title
-        self.duration = duration
-        self.formats_and_sizes = formats_and_sizes
-        self.soundtrack_urls = soundtrack_urls
-
-    def __str__(self):
-        f = '\n'.join([f'✓ {f} ({s})' for (f, s) in self.formats_and_sizes])
-        return '\n'.join([f'ALBUM Title: {self.title}', f'Total Duration: {self.duration}', 'Available format:', f])
-
-    def get_available_formats(self) -> Tuple[str, ...]:
-        return tuple(f for (f, _) in self.formats_and_sizes)
-
-
-class KhinsiderDownloader:
     def __init__(self, album_id):
         self.album_url = f'{BASE_ALBUM_URL}/{album_id}'
 
@@ -200,10 +168,17 @@ class KhinsiderDownloader:
         urls = [td for i, td in enumerate(soundtracks_table.find_all_next('td', class_='clickable-row')) if i % 4 == 0]
         soundtrack_urls = list(map(lambda td: f"{BASE_URL}{td.next_element['href']}", urls))
 
-        self.album = KhinsiderAlbum(album_title, album_duration, album_formats_and_sizes, soundtrack_urls)
+        self.title = album_title
+        self.duration = album_duration
+        self.formats_and_sizes = album_formats_and_sizes
+        self.soundtrack_urls = soundtrack_urls
 
-    def get_album(self):
-        return self.album
+    def __str__(self):
+        f = '\n'.join([f'✓ {f} ({s})' for (f, s) in self.formats_and_sizes])
+        return '\n'.join([f'ALBUM Title: {self.title}', f'Total Duration: {self.duration}', 'Available format:', f])
+
+    def get_available_formats(self) -> Tuple[str, ...]:
+        return tuple(f for (f, _) in self.formats_and_sizes)
 
     @staticmethod
     def parse_id(url_to_album: str) -> str:
@@ -261,7 +236,7 @@ class KhinsiderDownloader:
         self._create_output_directory(out_dir)
         download_count = 0
         skip_count = 0
-        for url in self.album.soundtrack_urls:
+        for url in self.soundtrack_urls:
             download_url = self._scrape_download_url(url, audio_format_selection)
             filename = self._parse_filename(download_url)
             filepath = f'{out_dir}/{filename}'
@@ -280,7 +255,7 @@ class KhinsiderDownloader:
         print(f'Downloads finished! {download_count} files have been downloaded, {skip_count} files has been skipped.')
 
     def get_download_length(self):
-        return len(self.album.soundtrack_urls)
+        return len(self.soundtrack_urls)
 
 
 # Interface
@@ -288,27 +263,26 @@ if __name__ == '__main__':
     while True:
         # URL to the album's page
         url_or_id = str(get_input("Link to the album's page or album ID:\n"))
-        id_ = KhinsiderDownloader.parse_id(url_or_id)
+        id_ = KhinsiderAlbum.parse_id(url_or_id)
 
         try:
             # Get soundtrack information
-            khin = KhinsiderDownloader(id_)
+            khin_album = KhinsiderAlbum(id_)
             print('')
 
-            # Display the information
-            album = khin.get_album()
-            print(album)
+            # Display album information
+            print(khin_album)
             print('')
 
             # Choose an audio format if there are more than one format available
-            f_selected = choose_format(album.get_available_formats())
+            f_selected = choose_format(khin_album.get_available_formats())
             print('')
 
             # Preset the output directory of audio file
-            dir_out = choose_download_dir(f'{str(Path.home())}/Music/{album.title}')
+            dir_out = choose_download_dir(f'{str(Path.home())}/Music/{khin_album.title}')
 
             print('\nPreparing download...')
-            khin.download(dir_out, f_selected)
+            khin_album.download(dir_out, f_selected)
             print('')
 
             while True:
