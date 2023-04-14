@@ -359,7 +359,7 @@ if __name__ == '__main__':
 ╚═══╝♪♪  ▁▇▅▂▃▂▇▅▇▃▄▁▇█▅█▃▄▁▇█▅▄▁▅▃▄▁▄▃▄█▅▇▃▄▁▄▇█▂▃▁▅▄▅█▁▅█▃▄▃▇▂▁
     '''
     print(welcome)
-    text_prompt = "▶ Please enter an album id OR a link to the album's page (from downloads.khinsider.com:\n"
+    text_prompt = "▶ Please enter an album id OR a link to the album's page (from downloads.khinsider.com):\n"
     while True:
         # Prompt the user to enter the URL or ID of the album
         url_or_id = str(get_input(text_prompt, default=''))
