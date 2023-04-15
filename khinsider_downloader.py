@@ -46,7 +46,7 @@ def choose_format(format_selections: Sequence[str]) -> int:
     selections_range = range(0, len(format_selections))
 
     # Display prompt
-    print('Choose a format:')
+    print('▶ Choose a format:')
     for i in selections_range:
         print(f'{i} - {format_selections[i]}')
 
@@ -83,7 +83,7 @@ def choose_download_dir(dir_default: str):
         str: The user's input as a string, or the default value if provided when the user entered nothing.
     """
     while True:
-        out = str(get_input(f'Download location (Press Enter to use default: {dir_default} ):\n', default=dir_default))
+        out = str(get_input(f'▶ Download location (Press Enter to use default: {dir_default} ):\n', default=dir_default))
 
         try:
             mkdir(out)
@@ -191,7 +191,7 @@ class KhinsiderAlbum:
             str: A string composed of the album's title, duration, and available formats with their sizes.
         """
         f = '\n'.join([f'✓ {f} ({s})' for (f, s) in self.formats_and_sizes])
-        return '\n'.join([f'ALBUM Title: {self.title}', f'Total Duration: {self.duration}', 'Available format:', f])
+        return '\n'.join(['ALBUM', f'Title: {self.title}', f'Total Duration: {self.duration}', 'Available format:', f])
 
     def get_available_formats(self) -> Tuple[str, ...]:
         """
